@@ -1,0 +1,17 @@
+[project]
+name = "aurmod"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Agil Mammadov", email = "mammadovagil@proton.me" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+aurmod = "aurmod:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
