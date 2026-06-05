@@ -15,3 +15,17 @@ aurmod = "aurmod:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.16",
+]
+
+[tool.ruff.lint]
+extend-select = [
+    "UP", # pyugrade
+    "D", # pydocstyle
+    "RUF", # ruff
+    "TCH", # flake8-tpye-checking
+]
+
