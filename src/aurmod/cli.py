@@ -2,8 +2,8 @@
 
 import click
 
-from .commands.init import init
 from .commands.add import add
+from .commands.init import init
 
 
 @click.group()

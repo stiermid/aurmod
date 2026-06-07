@@ -25,9 +25,20 @@ dev = [
 ]
 
 [tool.ruff.lint]
-extend-select = [
-    "UP", # pyugrade
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
     "D", # pydocstyle
+    "UP", # pyugrade
     "RUF", # ruff
     "TCH", # flake8-tpye-checking
 ]
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
