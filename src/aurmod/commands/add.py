@@ -40,6 +40,7 @@ def add(pkgname: str) -> None:
 
     try:
         repo.index.add([".gitmodules", pkgname])
+        repo.index.write()
         repo.index.commit(f"addpkg: {pkgname}")
         click.echo(f"succesfully added {new_sm.name}")
     except GitCommandError as e:
