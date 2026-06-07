@@ -1,7 +1,7 @@
 [project]
 name = "aurmod"
 version = "0.1.0"
-description = "Add your description here"
+description = "Managing aur packages with git submodules"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 authors = [
