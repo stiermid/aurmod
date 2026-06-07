@@ -3,6 +3,7 @@
 import click
 
 from .commands.init import init
+from .commands.add import add
 
 
 @click.group()
@@ -12,3 +13,4 @@ def cli():
 
 
 cli.add_command(init)
+cli.add_command(add)
