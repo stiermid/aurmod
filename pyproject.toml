@@ -3,6 +3,7 @@ name = "aurmod"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "GPL-3.0-or-later"
 authors = [
     { name = "Agil Mammadov", email = "mammadovagil@proton.me" }
 ]
