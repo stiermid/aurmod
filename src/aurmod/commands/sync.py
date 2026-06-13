@@ -10,7 +10,8 @@ from ..utils import is_submodule
 
 
 @click.command()
-def sync() -> None:
+@click.argument("pkgname", required=False, default=None)
+def sync(pkgname: str) -> None:
     """Sync packages as submodule."""
     try:
         repo = Repo(".")
@@ -22,9 +23,13 @@ def sync() -> None:
 
     sms = repo.submodules  # submodules
 
-    for sm in sms:
+    if pkgname:
+        sm = sms[pkgname]
+
+        if not sm.exists():
+            raise click.ClickException(f"package {pkgname} is not in repo")
+
         click.echo(f"Pulling latest remote changes for: {sm.name}")
-        sm.update(init=True)
         sm_repo = sm.module()
         origin = sm_repo.remotes.origin
         origin.pull()
@@ -33,3 +38,16 @@ def sync() -> None:
 
         if repo.is_dirty(untracked_files=False):
             repo.index.commit(f"syncpkg: {sm.name}")
+
+    else:
+        for sm in sms:
+            click.echo(f"Pulling latest remote changes for: {sm.name}")
+            sm.update(init=True)
+            sm_repo = sm.module()
+            origin = sm_repo.remotes.origin
+            origin.pull()
+
+            repo.git.add([sm.path])
+
+            if repo.is_dirty(untracked_files=False):
+                repo.index.commit(f"syncpkg: {sm.name}")
