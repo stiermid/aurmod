@@ -36,16 +36,16 @@ def add(pkgname: str) -> None:
             url=f"ssh://aur@aur.archlinux.org/{pkgname}.git",
         )
     except GitCommandError as e:
-        print(f"Error adding submodule: {e}")
+        raise click.ClickException(f"adding submodule: {e}")
     except ValueError:
         repo.index.reset(head=True, working_tree=True)
         repo.git.clean("-ff", "-d")
         raise click.ClickException(f"make sure package {pkgname} exists")
 
     try:
-        repo.index.add(".gitmodules", pkgname)
+        repo.git.add(".gitmodules", pkgname)
         repo.index.write()
         repo.index.commit(f"addpkg: {pkgname}")
         click.echo(f"succesfully added {new_sm.name}")
     except GitCommandError as e:
-        print(f"Error commiting changes: {e}")
+        raise click.ClickException(f"commiting changes: {e}")
