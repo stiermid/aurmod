@@ -37,6 +37,10 @@ def add(pkgname: str) -> None:
         )
     except GitCommandError as e:
         print(f"Error adding submodule: {e}")
+    except ValueError:
+        repo.index.reset(head=True, working_tree=True)
+        repo.git.clean("-ff", "-d")
+        raise click.ClickException(f"make sure package {pkgname} exists")
 
     try:
         repo.index.add(".gitmodules", pkgname)
