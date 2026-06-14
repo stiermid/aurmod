@@ -30,6 +30,7 @@ def sync(pkgname: str) -> None:
             raise click.ClickException(f"package {pkgname} is not in repo")
 
         click.echo(f"Pulling latest remote changes for: {sm.name}")
+        sm.update(init=True)
         sm_repo = sm.module()
         origin = sm_repo.remotes.origin
         origin.pull()
