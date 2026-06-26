@@ -16,7 +16,7 @@ def sync(pkgname: str) -> None:
     try:
         repo = Repo(".")
     except InvalidGitRepositoryError:
-        raise click.ClickException("git repo is not found")
+        raise click.ClickException("Git repo is not found.")
 
     if is_submodule(repo):
         repo = Repo("..")
@@ -27,7 +27,7 @@ def sync(pkgname: str) -> None:
         sm = sms[pkgname]
 
         if not sm.exists():
-            raise click.ClickException(f"package {pkgname} is not in repo")
+            raise click.ClickException(f"Package {pkgname} is not in repo.")
 
         click.echo(f"Pulling latest remote changes for: {sm.name}")
         sm.update(init=True)

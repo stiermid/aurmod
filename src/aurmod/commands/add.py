@@ -17,7 +17,7 @@ def add(pkgname: str) -> None:
     try:
         repo = Repo(".")
     except InvalidGitRepositoryError:
-        raise click.ClickException("git repo is not found")
+        raise click.ClickException("Git repo is not found.")
 
     if is_submodule(repo):
         repo = Repo("..")
@@ -26,7 +26,7 @@ def add(pkgname: str) -> None:
     sms = repo.submodules  # submodules
 
     if any(sm.name == pkgname for sm in sms):
-        raise click.ClickException(f"package {pkgname} is already in repo")
+        raise click.ClickException(f"Package {pkgname} is already in repo.")
 
     try:
         new_sm = Submodule.add(
@@ -36,16 +36,16 @@ def add(pkgname: str) -> None:
             url=f"ssh://aur@aur.archlinux.org/{pkgname}.git",
         )
     except GitCommandError as e:
-        raise click.ClickException(f"adding submodule: {e}")
+        raise click.ClickException(f"Adding submodule: {e}")
     except ValueError:
         repo.index.reset(head=True, working_tree=True)
         repo.git.clean("-ff", "-d")
-        raise click.ClickException(f"make sure package {pkgname} exists")
+        raise click.ClickException(f"Make sure package {pkgname} exists.")
 
     try:
         repo.git.add(".gitmodules", pkgname)
         repo.index.write()
         repo.index.commit(f"addpkg: {pkgname}")
-        click.echo(f"succesfully added {new_sm.name}")
+        click.echo(f"Succesfully added: {new_sm.name}")
     except GitCommandError as e:
-        raise click.ClickException(f"commiting changes: {e}")
+        raise click.ClickException(f"Commiting changes: {e}")
