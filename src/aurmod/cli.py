@@ -3,7 +3,6 @@
 import click
 
 from .commands.add import add
-from .commands.init import init
 from .commands.sync import sync
 
 
@@ -13,6 +12,5 @@ def cli():
     pass
 
 
-cli.add_command(init)
 cli.add_command(add)
 cli.add_command(sync)
