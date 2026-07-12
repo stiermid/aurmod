@@ -27,4 +27,4 @@ jobs:
         run: uv run pytest -v
 
       - name: Lint
-        uses: uv run ruff check src/ tests/
+        uses: uv run ruff check
