@@ -4,22 +4,15 @@ This module provides the ``sync`` CLI command.
 """
 
 import click
-from git import InvalidGitRepositoryError, Repo
 
-from ..utils import is_submodule
+from ..utils import get_root_repo
 
 
 @click.command()
 @click.argument("pkgname", required=False, default=None)
 def sync(pkgname: str) -> None:
     """Sync packages as submodule."""
-    try:
-        repo = Repo(".")
-    except InvalidGitRepositoryError:
-        raise click.ClickException("Git repo is not found.")
-
-    if is_submodule(repo):
-        repo = Repo("..")
+    repo = get_root_repo()
 
     sms = repo.submodules  # submodules
 

@@ -4,25 +4,18 @@ This module provides the ``add`` CLI command.
 """
 
 import click
-from git import InvalidGitRepositoryError, Repo, Submodule
+from git import Submodule
 from git.exc import GitCommandError
 
-from ..utils import is_submodule
+from ..utils import get_root_repo
 
 
 @click.command()
 @click.argument("pkgname")
 def add(pkgname: str) -> None:
     """Add a package to worktree as submodule."""
-    try:
-        repo = Repo(".")
-    except InvalidGitRepositoryError:
-        raise click.ClickException("Git repo is not found.")
+    repo = get_root_repo()
 
-    if is_submodule(repo):
-        repo = Repo("..")
-
-    # repo = RootModule(repo)
     sms = repo.submodules  # submodules
 
     if any(sm.name == pkgname for sm in sms):
