@@ -5,7 +5,7 @@ This module provides the ``add`` CLI command.
 
 import click
 from git import InvalidGitRepositoryError, Repo, Submodule
-from git.cmd import GitCommandError
+from git.exc import GitCommandError
 
 from ..utils import is_submodule
 
