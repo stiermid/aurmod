@@ -5,7 +5,7 @@ This module provides the ``sync`` CLI command.
 
 import click
 
-from ..utils import get_root_repo
+from ..utils import get_root_repo, update_submodule
 
 
 @click.command()
@@ -22,26 +22,13 @@ def sync(pkgname: str) -> None:
         if not sm.exists():
             raise click.ClickException(f"Package {pkgname} is not in repo.")
 
-        click.echo(f"Pulling latest remote changes for: {sm.name}")
-        sm.update(init=True)
-        sm_repo = sm.module()
-        origin = sm_repo.remotes.origin
-        origin.pull()
-
-        repo.git.add([sm.path])
+        update_submodule(repo, sm)
 
         if repo.is_dirty(untracked_files=False):
             repo.index.commit(f"syncpkg: {sm.name}")
 
     else:
-        for sm in sms:
-            click.echo(f"Pulling latest remote changes for: {sm.name}")
-            sm.update(init=True)
-            sm_repo = sm.module()
-            origin = sm_repo.remotes.origin
-            origin.pull()
+        updated = [sm.name for sm in sms if update_submodule(repo, sm)]
 
-            repo.git.add([sm.path])
-
-            if repo.is_dirty(untracked_files=False):
-                repo.index.commit(f"syncpkg: {sm.name}")
+        if updated:
+            repo.index.commit(f"syncpkg: {', '.join(updated)}")

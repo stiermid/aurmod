@@ -5,11 +5,13 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+import click
 from click import ClickException
 from git import InvalidGitRepositoryError
 from git.repo import Repo
 
 if TYPE_CHECKING:
+    from git import Submodule
     from git.types import PathLike
 
 
@@ -28,3 +30,18 @@ def get_root_repo(path: PathLike = ".") -> Repo:
         raise ClickException("Git repo is not found.")
 
     return Repo("..") if is_submodule(repo) else repo
+
+
+def update_submodule(repo: Repo, sm: Submodule) -> bool:
+    """Pull latest changes for a submodule and stage the updated gitlink.
+
+    Returns ``True`` if the submodule's checked-out commit changed.
+    """
+    click.echo(f"Pulling latest remote changes for: {sm.name}")
+    old_commit = str(sm.module().head.commit) if sm.module_exists() else None
+    sm.update(init=True)
+    sm_repo = sm.module()
+    origin = sm_repo.remotes.origin
+    origin.pull()
+    repo.git.add([sm.path])
+    return old_commit != str(sm_repo.head.commit)
