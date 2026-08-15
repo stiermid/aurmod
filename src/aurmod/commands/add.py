@@ -9,6 +9,8 @@ from git.exc import GitCommandError
 
 from ..utils import get_root_repo
 
+AUR_URL = "ssh://aur@aur.archlinux.org/{pkgname}.git"
+
 
 @click.command()
 @click.argument("pkgname")
@@ -26,7 +28,7 @@ def add(pkgname: str) -> None:
             repo,
             name=pkgname,
             path=pkgname,
-            url=f"ssh://aur@aur.archlinux.org/{pkgname}.git",
+            url=AUR_URL.format(pkgname=pkgname),
         )
     except GitCommandError as e:
         raise click.ClickException(f"Adding submodule: {e}")
@@ -39,6 +41,6 @@ def add(pkgname: str) -> None:
         repo.git.add(".gitmodules", pkgname)
         repo.index.write()
         repo.index.commit(f"addpkg: {pkgname}")
-        click.echo(f"Succesfully added: {new_sm.name}")
+        click.echo(f"Successfully added: {new_sm.name}")
     except GitCommandError as e:
-        raise click.ClickException(f"Commiting changes: {e}")
+        raise click.ClickException(f"Committing changes: {e}")

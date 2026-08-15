@@ -22,9 +22,13 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "pytest-cov>=7.0.0",
     "pytest>=9.1.1",
     "ruff>=0.15.16",
 ]
+
+[tool.pytest.ini_options]
+addopts = "--cov=aurmod --cov-report=term-missing"
 
 [tool.ruff.lint]
 select = [
