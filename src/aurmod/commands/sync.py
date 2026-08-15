@@ -17,9 +17,9 @@ def sync(pkgname: str) -> None:
     sms = repo.submodules  # submodules
 
     if pkgname:
-        sm = sms[pkgname]
-
-        if not sm.exists():
+        try:
+            sm = sms[pkgname]
+        except IndexError:
             raise click.ClickException(f"Package {pkgname} is not in repo.")
 
         update_submodule(repo, sm)
