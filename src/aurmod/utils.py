@@ -16,10 +16,15 @@ if TYPE_CHECKING:
 
 
 def is_submodule(repo: Repo) -> bool:
-    """Check whether repo is submodule or not."""
+    """Check whether repo is submodule or not.
+
+    A submodule has a ``.git`` gitfile whose gitdir lives under the
+    parent repo's ``.git/modules/`` directory (linked worktrees live
+    under ``.git/worktrees/`` instead).
+    """
     expected_git_dir = os.path.join(str(repo.working_tree_dir), ".git")
-    git_dir_str = str(repo.git_dir)
-    return os.path.isfile(expected_git_dir) or "modules" in git_dir_str
+    marker = os.path.join(".git", "modules")
+    return os.path.isfile(expected_git_dir) and marker in str(repo.git_dir)
 
 
 def get_root_repo(path: PathLike = ".") -> Repo:
