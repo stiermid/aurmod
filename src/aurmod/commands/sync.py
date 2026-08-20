@@ -5,6 +5,7 @@ This module provides the ``sync`` CLI command.
 
 import click
 
+from ..messages import describe_package, read_srcinfo
 from ..utils import get_root_repo, update_submodule
 
 
@@ -25,10 +26,18 @@ def sync(pkgname: str) -> None:
         update_submodule(repo, sm)
 
         if repo.is_dirty(untracked_files=False):
-            repo.index.commit(f"syncpkg: {sm.name}")
+            message = "syncpkg: " + describe_package(
+                sm.name, read_srcinfo(sm.module())
+            )
+            repo.index.commit(message)
 
     else:
-        updated = [sm.name for sm in sms if update_submodule(repo, sm)]
+        updated = []
+        for sm in sms:
+            if update_submodule(repo, sm):
+                updated.append(
+                    describe_package(sm.name, read_srcinfo(sm.module()))
+                )
 
         if updated:
-            repo.index.commit(f"syncpkg: {', '.join(updated)}")
+            repo.index.commit("syncpkg: " + ", ".join(updated))

@@ -7,6 +7,7 @@ import click
 from git import Submodule
 from git.exc import GitCommandError
 
+from ..messages import describe_package, read_srcinfo
 from ..utils import get_root_repo
 
 AUR_URL = "ssh://aur@aur.archlinux.org/{pkgname}.git"
@@ -38,9 +39,12 @@ def add(pkgname: str) -> None:
         raise click.ClickException(f"Make sure package {pkgname} exists.")
 
     try:
+        info = read_srcinfo(new_sm.module())
+        action = "Initial upload" if info else "addpkg"
+        message = f"{action}: {describe_package(new_sm.name, info)}"
         repo.git.add(".gitmodules", pkgname)
         repo.index.write()
-        repo.index.commit(f"addpkg: {pkgname}")
+        repo.index.commit(message)
         click.echo(f"Successfully added: {new_sm.name}")
     except GitCommandError as e:
         raise click.ClickException(f"Committing changes: {e}")

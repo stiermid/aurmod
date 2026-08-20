@@ -12,7 +12,8 @@ def test_help() -> None:
     assert result.exit_code == 0
 
     for command in cli.commands:
-        assert command in result.output
+        if not cli.commands[command].hidden:
+            assert command in result.output
 
 
 def test_no_args() -> None:
@@ -24,4 +25,5 @@ def test_no_args() -> None:
     assert result.exit_code == 2
 
     for command in cli.commands:
-        assert command in result.output
+        if not cli.commands[command].hidden:
+            assert command in result.output

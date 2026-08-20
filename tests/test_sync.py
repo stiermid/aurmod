@@ -65,3 +65,25 @@ def test_sync_all_no_changes(submodule_factory, cli_runner) -> None:
 
     assert result.exit_code == 0
     assert worktree.head.commit.hexsha == before
+
+
+def test_sync_specific_with_version(submodule_factory, cli_runner) -> None:
+    """Syncing a package that carries a version in .SRCINFO records it."""
+    worktree, sources = submodule_factory("pkg-a")
+    commit_file(
+        sources["pkg-a"],
+        "PKGBUILD",
+        "pkgname=pkg-a\npkgver=2\npkgrel=1\n",
+        "bump",
+    )
+    commit_file(
+        sources["pkg-a"],
+        ".SRCINFO",
+        "pkgbase = pkg-a\npkgver = 2\npkgrel = 1\n",
+        "srcinfo",
+    )
+
+    result = cli_runner(str(worktree.working_tree_dir), ["sync", "pkg-a"])
+
+    assert result.exit_code == 0
+    assert worktree.head.commit.message.strip() == "syncpkg: pkg-a 2-1"

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from git import IndexFile
+from git import IndexFile, Repo
 from git.exc import GitCommandError
+from helpers import commit_file
 
 import aurmod.commands.add as add_mod
 
@@ -107,3 +108,24 @@ def test_add_not_a_git_repo(tmp_path, cli_runner) -> None:
     result = cli_runner(str(tmp_path), ["add", "pkg-a"])
     assert result.exit_code == 1
     assert "Git repo is not found." in result.output
+
+
+def test_add_versioned_message(
+    repo_factory, make_aur_remote, cli_runner, monkeypatch
+) -> None:
+    """Adding a package with .SRCINFO uses an initial-upload message."""
+    repo = repo_factory()
+    base = make_aur_remote("pkg-a")
+    pkg_repo = Repo(base / "pkg-a")
+    commit_file(
+        pkg_repo,
+        ".SRCINFO",
+        "pkgbase = pkg-a\npkgver = 1.0\npkgrel = 1\n",
+        "add srcinfo",
+    )
+    monkeypatch.setattr(add_mod, "AUR_URL", _aur_url(base))
+
+    result = cli_runner(str(repo.working_tree_dir), ["add", "pkg-a"])
+
+    assert result.exit_code == 0
+    assert repo.head.commit.message.strip() == "Initial upload: pkg-a 1.0-1"
