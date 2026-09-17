@@ -4,9 +4,17 @@ from __future__ import annotations
 
 import click
 import pytest
-from helpers import commit_file, cwd_context
+from helpers import cwd_context
 
-from aurmod.utils import get_root_repo, is_submodule, update_submodule
+from aurmod.utils import (
+    ahead_behind,
+    current_branch,
+    get_root_repo,
+    get_submodule,
+    is_submodule,
+    pointer_state,
+    require_submodules,
+)
 
 
 def test_is_submodule_false_on_plain_repo(repo_factory) -> None:
@@ -46,25 +54,36 @@ def test_get_root_repo_raises_outside_git_repo(tmp_path) -> None:
         get_root_repo(str(tmp_path))
 
 
-def test_update_submodule_returns_false_when_up_to_date(
-    submodule_factory,
-) -> None:
-    """update_submodule returns False when there is nothing to pull."""
+def test_get_submodule_unknown(submodule_factory) -> None:
+    """Requesting an unknown package raises a clear error."""
+    worktree, _ = submodule_factory("pkg-a")
+    with pytest.raises(click.ClickException, match="ghost"):
+        get_submodule(worktree, "ghost")
+
+
+def test_require_submodules_empty(repo_factory) -> None:
+    """An empty collection raises a clear error."""
+    repo = repo_factory()
+    with pytest.raises(click.ClickException, match="No packages"):
+        require_submodules(repo)
+
+
+def test_pointer_state_ok(submodule_factory) -> None:
+    """A fresh submodule pointer is in sync."""
     worktree, _ = submodule_factory("pkg-a")
     sm = worktree.submodules["pkg-a"]
-    assert update_submodule(worktree, sm) is False
-    assert worktree.is_dirty(untracked_files=False) is False
+    assert pointer_state(worktree, sm)["state"] == "ok"
 
 
-def test_update_submodule_pulls_and_stages_gitlink(submodule_factory) -> None:
-    """update_submodule advances the submodule and stages the new gitlink."""
-    worktree, sources = submodule_factory("pkg-a")
-    commit_file(
-        sources["pkg-a"], "PKGBUILD", "pkgname=pkg-a\npkgver=2\n", "bump"
-    )
+def test_ahead_behind_up_to_date(submodule_factory) -> None:
+    """A fresh clone is neither ahead nor behind."""
+    worktree, _ = submodule_factory("pkg-a")
+    sm_repo = worktree.submodules["pkg-a"].module()
+    assert ahead_behind(sm_repo) == (0, 0)
 
-    sm = worktree.submodules["pkg-a"]
-    assert update_submodule(worktree, sm) is True
-    assert str(sm.module().head.commit) == str(sources["pkg-a"].head.commit)
-    staged = worktree.git.diff("--cached", "--name-only")
-    assert "pkg-a" in staged
+
+def test_current_branch_master(submodule_factory) -> None:
+    """Submodules are checked out on master by default."""
+    worktree, _ = submodule_factory("pkg-a")
+    sm_repo = worktree.submodules["pkg-a"].module()
+    assert current_branch(sm_repo) == "master"
