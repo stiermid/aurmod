@@ -3,7 +3,9 @@
 import click
 
 from .commands.add import add
-from .commands.sync import sync
+from .commands.init import init
+from .commands.pull import pull
+from .commands.push import push
 
 
 @click.group()
@@ -13,4 +15,6 @@ def cli():
 
 
 cli.add_command(add)
-cli.add_command(sync)
+cli.add_command(init)
+cli.add_command(pull)
+cli.add_command(push)

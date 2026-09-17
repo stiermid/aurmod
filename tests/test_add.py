@@ -107,3 +107,41 @@ def test_add_not_a_git_repo(tmp_path, cli_runner) -> None:
     result = cli_runner(str(tmp_path), ["add", "pkg-a"])
     assert result.exit_code == 1
     assert "Git repo is not found." in result.output
+
+
+def test_add_invalid_name(repo_factory, cli_runner) -> None:
+    """Invalid AUR names are rejected before any network access."""
+    repo = repo_factory()
+
+    result = cli_runner(str(repo.working_tree_dir), ["add", "Bad Name"])
+
+    assert result.exit_code == 1
+    assert "Invalid package name" in result.output
+
+
+def test_add_empty_offline(repo_factory, cli_runner, monkeypatch) -> None:
+    """--empty creates a package folder without network access."""
+    repo = repo_factory()
+    monkeypatch.setattr(
+        add_mod, "AUR_URL", "ssh://aur@aur.archlinux.org/{pkgname}.git"
+    )
+    # Force the template path even when makepkg is missing.
+    import aurmod.pkg as pkg_mod
+
+    monkeypatch.setattr(
+        pkg_mod, "run_printsrcinfo", lambda _d: (None, "no makepkg")
+    )
+
+    result = cli_runner(
+        str(repo.working_tree_dir), ["add", "--empty", "new-pkg"]
+    )
+
+    assert result.exit_code == 0
+    assert "Successfully added: new-pkg" in result.output
+    pkg_dir = Path(repo.working_tree_dir) / "new-pkg"
+    assert (pkg_dir / "PKGBUILD").is_file()
+    assert (pkg_dir / ".SRCINFO").is_file()
+    sm = repo.submodules["new-pkg"]
+    origin = sm.module().remotes.origin.url
+    assert "aur.archlinux.org" in str(origin)
+    assert repo.head.commit.message.strip() == "addpkg: new-pkg"
