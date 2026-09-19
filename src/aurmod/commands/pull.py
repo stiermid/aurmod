@@ -114,13 +114,8 @@ def pull_one(root: str, name: str) -> tuple[bool, str, str]:
     is_flag=True,
     help="Pull every package in the collection.",
 )
-@click.option(
-    "--commit",
-    is_flag=True,
-    help="Commit the outer pointer after pulling.",
-)
-def pull(pkgname: str | None, all_packages: bool, commit: bool) -> None:
-    """Pull AUR changes into package folders, then stage the pointer."""
+def pull(pkgname: str | None, all_packages: bool) -> None:
+    """Pull AUR changes into package folders, then commit the pointer."""
     repo = get_root_repo()
     if all_packages:
         names = [sm.name for sm in require_submodules(repo)]
@@ -145,7 +140,7 @@ def pull(pkgname: str | None, all_packages: bool, commit: bool) -> None:
         staged = repo.git.diff("--cached", "--name-only").strip()
         if not staged:
             click.echo("Outer pointer already up to date.")
-        elif commit:
+        else:
             if len(updated) == 1:
                 (single, version) = next(iter(updated.items()))
                 msg = f"{single}: {version}"
@@ -153,14 +148,6 @@ def pull(pkgname: str | None, all_packages: bool, commit: bool) -> None:
                 msg = ", ".join(f"{n}: {v}" for n, v in sorted(updated.items()))
             repo.index.commit(msg)
             click.echo(f"Committed outer pointer: {msg}")
-        else:
-            if len(updated) == 1:
-                (single, version) = next(iter(updated.items()))
-                msg = f"{single}: {version}"
-            else:
-                msg = ", ".join(f"{n}: {v}" for n, v in sorted(updated.items()))
-            click.echo("Outer pointer staged. Commit it with:")
-            click.echo(f'  git commit -m "{msg}"')
 
     if failed:
         raise click.ClickException(
