@@ -177,3 +177,16 @@ def whitespace_issues(sm_repo: Repo) -> str:
         if out:
             issues.append(out)
     return "\n".join(issues)
+
+
+def staged_sha(repo: Repo, path: str) -> str | None:
+    """Return the staged blob SHA for ``path``, or ``None`` if absent."""
+    try:
+        return repo.git.rev_parse(f":{path}").strip()
+    except GitCommandError:
+        return None
+
+
+def commit_paths(repo: Repo, message: str, paths: list[str]) -> None:
+    """Commit staged changes limited to ``paths``, leaving the rest."""
+    repo.git.commit("-m", message, "--", *paths)

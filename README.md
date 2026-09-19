@@ -10,7 +10,7 @@
 
 One folder holds all the AUR packages you maintain. Each package
 folder is a complete AUR repository. The outer folder only remembers
-which version of each package you last published.
+which version of each package you last published or pulled.
 
 ## Commands
 
@@ -30,7 +30,8 @@ which version of each package you last published.
 Publishing is always two steps: push the package folder, then save
 the pointer in the outer folder. `push` stages the pointer for you;
 use `--commit` to commit it at once as `foo: 1.0-2`. `pull` commits
-the pointer automatically, since it only records upstream state.
+the pointers it updated automatically, since it only records upstream
+state, leaving any other staged changes alone.
 
 Folder names must match `pkgbase` from `.SRCINFO`, and `.SRCINFO`
 must match `makepkg --printsrcinfo > .SRCINFO` output.
