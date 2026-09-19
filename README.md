@@ -20,7 +20,7 @@ which version of each package you last published.
 - `aurmod push <name> | --all [--commit]` — push to the AUR, then
   stage the new outer pointer.
 - `aurmod pull <name> | --all` — fast-forward package folders
-  from the AUR.
+  from the AUR, then commit the new outer pointer.
 - `aurmod status` — one line per package: version, dirtiness,
   SRCINFO state, ahead/behind, pointer state.
 - `aurmod check <name> | --all` — report publish blockers.
@@ -29,7 +29,8 @@ which version of each package you last published.
 
 Publishing is always two steps: push the package folder, then save
 the pointer in the outer folder. `push` stages the pointer for you;
-use `--commit` to commit it at once as `foo: 1.0-2`.
+use `--commit` to commit it at once as `foo: 1.0-2`. `pull` commits
+the pointer automatically, since it only records upstream state.
 
 Folder names must match `pkgbase` from `.SRCINFO`, and `.SRCINFO`
 must match `makepkg --printsrcinfo > .SRCINFO` output.

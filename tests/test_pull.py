@@ -6,7 +6,7 @@ from helpers import commit_file
 
 
 def test_pull_specific_package(submodule_factory, cli_runner) -> None:
-    """Pulling a named package fast-forwards it without committing."""
+    """Pulling a named package fast-forwards it and commits the pointer."""
     worktree, sources = submodule_factory("pkg-a")
     commit_file(
         sources["pkg-a"], "PKGBUILD", "pkgname=pkg-a\npkgver=2\n", "bump"
@@ -19,8 +19,11 @@ def test_pull_specific_package(submodule_factory, cli_runner) -> None:
     assert "fast-forwarded" in result.output
     sm = worktree.submodules["pkg-a"]
     assert str(sm.module().head.commit) == str(sources["pkg-a"].head.commit)
-    # pull never touches the outer history: the pointer is now outdated.
-    assert worktree.head.commit.hexsha == before
+    # pull commits the outer pointer, leaving a clean tree.
+    assert worktree.head.commit.hexsha != before
+    assert "Committed outer pointer" in result.output
+    assert not worktree.is_dirty()
+    assert worktree.git.diff("--cached", "--name-only").strip() == ""
 
 
 def test_pull_unknown_package(submodule_factory, cli_runner) -> None:
@@ -34,20 +37,23 @@ def test_pull_unknown_package(submodule_factory, cli_runner) -> None:
 
 
 def test_pull_specific_no_changes(submodule_factory, cli_runner) -> None:
-    """Pulling an up-to-date package reports it."""
+    """Pulling an up-to-date package reports it without committing."""
     worktree, _ = submodule_factory("pkg-a")
+    before = worktree.head.commit.hexsha
 
     result = cli_runner(str(worktree.working_tree_dir), ["pull", "pkg-a"])
 
     assert result.exit_code == 0
     assert "already up to date" in result.output
+    assert worktree.head.commit.hexsha == before
 
 
 def test_pull_all_packages(submodule_factory, cli_runner) -> None:
-    """Pulling everything updates all behind packages."""
+    """Pulling everything updates all behind packages and commits."""
     worktree, sources = submodule_factory("pkg-a", "pkg-b")
     commit_file(sources["pkg-a"], "PKGBUILD", "pkgver=2\n", "bump a")
     commit_file(sources["pkg-b"], "PKGBUILD", "pkgver=3\n", "bump b")
+    before = worktree.head.commit.hexsha
 
     result = cli_runner(str(worktree.working_tree_dir), ["pull", "--all"])
 
@@ -55,6 +61,9 @@ def test_pull_all_packages(submodule_factory, cli_runner) -> None:
     for pkg in ("pkg-a", "pkg-b"):
         sm = worktree.submodules[pkg]
         assert str(sm.module().head.commit) == str(sources[pkg].head.commit)
+    assert worktree.head.commit.hexsha != before
+    assert "Committed outer pointer" in result.output
+    assert not worktree.is_dirty()
 
 
 def test_pull_repairs_detached(submodule_factory, cli_runner) -> None:
