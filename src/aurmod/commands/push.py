@@ -9,10 +9,12 @@ from git.exc import GitCommandError
 
 from ..pkg import REGENERATE_MSG, get_pkgbase, get_version, srcinfo_status
 from ..utils import (
+    commit_paths,
     current_branch,
     get_root_repo,
     get_submodule,
     require_submodules,
+    staged_sha,
     whitespace_issues,
 )
 
@@ -117,17 +119,20 @@ def push(pkgname: str | None, all_packages: bool, commit: bool) -> None:
     """Push packages to the AUR, then stage the new outer pointer."""
     repo = get_root_repo()
     if all_packages:
-        names = [sm.name for sm in require_submodules(repo)]
+        sms = require_submodules(repo)
     elif pkgname:
-        names = [get_submodule(repo, pkgname).name]
+        sms = [get_submodule(repo, pkgname)]
     else:
         raise click.ClickException("Specify a package or use --all.")
 
     assert repo.working_tree_dir is not None
     root = str(repo.working_tree_dir)
+    names = sorted(sm.name for sm in sms)
+    paths = {sm.name: sm.path for sm in sms}
+    before = {name: staged_sha(repo, paths[name]) for name in names}
     ok: dict[str, str] = {}
     failed: dict[str, str] = {}
-    for name in sorted(names):
+    for name in names:
         success, version, message = push_one(root, name)
         if success:
             ok[name] = version
@@ -137,23 +142,40 @@ def push(pkgname: str | None, all_packages: bool, commit: bool) -> None:
             click.echo(f"{name}: refused: {message}")
 
     if ok:
-        staged = repo.git.diff("--cached", "--name-only").strip()
-        if not staged:
+        # Commit only pointers this push staged, leaving any other
+        # staged changes alone.
+        changed = [
+            name
+            for name in names
+            if name in ok and staged_sha(repo, paths[name]) != before[name]
+        ]
+        diff_paths = [paths[name] for name in changed]
+        staged = (
+            set(
+                repo.git.diff(
+                    "--cached", "--name-only", "--", *diff_paths
+                ).split()
+            )
+            if diff_paths
+            else set()
+        )
+        committable = [name for name in changed if paths[name] in staged]
+        if not committable:
             click.echo("Outer pointer already up to date.")
         elif commit:
-            if len(ok) == 1:
-                (single, version) = next(iter(ok.items()))
-                msg = f"{single}: {version}"
+            if len(committable) == 1:
+                name = committable[0]
+                msg = f"{name}: {ok[name]}"
             else:
-                msg = ", ".join(f"{n}: {v}" for n, v in sorted(ok.items()))
-            repo.index.commit(msg)
+                msg = ", ".join(f"{n}: {ok[n]}" for n in committable)
+            commit_paths(repo, msg, [paths[name] for name in committable])
             click.echo(f"Committed outer pointer: {msg}")
         else:
-            if len(ok) == 1:
-                (single, version) = next(iter(ok.items()))
-                msg = f"{single}: {version}"
+            if len(committable) == 1:
+                name = committable[0]
+                msg = f"{name}: {ok[name]}"
             else:
-                msg = ", ".join(f"{n}: {v}" for n, v in sorted(ok.items()))
+                msg = ", ".join(f"{n}: {ok[n]}" for n in committable)
             click.echo("Outer pointer staged. Commit it with:")
             click.echo(f'  git commit -m "{msg}"')
 

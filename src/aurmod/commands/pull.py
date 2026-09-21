@@ -3,21 +3,27 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 from git.exc import GitCommandError
 
 from ..pkg import get_version
 from ..utils import (
+    commit_paths,
     fetch_origin,
     get_root_repo,
     get_submodule,
     is_ancestor,
     require_submodules,
+    staged_sha,
 )
 
+if TYPE_CHECKING:
+    from git import Repo, Submodule
 
-def _stage_pointer(repo, sm) -> str | None:
+
+def _stage_pointer(repo: Repo, sm: Submodule) -> str | None:
     """Stage the outer gitlink for ``sm``; return error or ``None``."""
     try:
         repo.git.add(sm.path)
@@ -26,11 +32,19 @@ def _stage_pointer(repo, sm) -> str | None:
     return None
 
 
+def _package_version(root: str, sm: Submodule, sm_repo: Repo) -> str:
+    """Return ``pkgver-pkgrel`` for a package, or short SHA as fallback."""
+    version = get_version(Path(root) / sm.path)
+    if version == "unknown":
+        version = sm_repo.head.commit.hexsha[:7]
+    return version
+
+
 def pull_one(root: str, name: str) -> tuple[bool, str, str]:
     """Pull one package; return ``(ok, version, message)``.
 
-    On a successful fast-forward (or when already in sync with the
-    remote) the outer pointer is staged, mirroring ``push``.
+    Fast-forward and already-in-sync paths stage the outer pointer;
+    the caller decides which staged pointers to commit.
     """
     from git.repo import Repo
 
@@ -81,8 +95,7 @@ def pull_one(root: str, name: str) -> tuple[bool, str, str]:
         err = _stage_pointer(repo, sm)
         if err is not None:
             return False, "unknown", err
-        version = get_version(Path(root) / sm.path)
-        return True, version, "already up to date"
+        return True, _package_version(root, sm, sm_repo), "already up to date"
     if is_ancestor(sm_repo, head, remote):
         try:
             sm_repo.git.merge("--ff-only", "origin/master")
@@ -91,11 +104,13 @@ def pull_one(root: str, name: str) -> tuple[bool, str, str]:
         err = _stage_pointer(repo, sm)
         if err is not None:
             return False, "unknown", err
-        version = get_version(Path(root) / sm.path)
-        return True, version, "fast-forwarded"
+        return True, _package_version(root, sm, sm_repo), "fast-forwarded"
     if is_ancestor(sm_repo, remote, head):
-        version = get_version(Path(root) / sm.path)
-        return True, version, "ahead of AUR; push to publish"
+        return (
+            True,
+            _package_version(root, sm, sm_repo),
+            "ahead of AUR; push to publish",
+        )
     return (
         False,
         "unknown",
@@ -118,36 +133,58 @@ def pull(pkgname: str | None, all_packages: bool) -> None:
     """Pull AUR changes into package folders, then commit the pointer."""
     repo = get_root_repo()
     if all_packages:
-        names = [sm.name for sm in require_submodules(repo)]
+        sms = require_submodules(repo)
     elif pkgname:
-        names = [get_submodule(repo, pkgname).name]
+        sms = [get_submodule(repo, pkgname)]
     else:
         raise click.ClickException("Specify a package or use --all.")
 
     assert repo.working_tree_dir is not None
     root = str(repo.working_tree_dir)
-    updated: dict[str, str] = {}
+    names = sorted(sm.name for sm in sms)
+    paths = {sm.name: sm.path for sm in sms}
+    before = {name: staged_sha(repo, paths[name]) for name in names}
+    results: dict[str, str] = {}
+    versions: dict[str, str] = {}
     failed: dict[str, str] = {}
-    for name in sorted(names):
+    for name in names:
         ok, version, message = pull_one(root, name)
         click.echo(f"{name}: {message}")
+        results[name] = message
         if not ok:
             failed[name] = message
         elif message in ("fast-forwarded", "already up to date"):
-            updated[name] = version
+            versions[name] = version
 
+    # Only pointers this pull actually updated are committed, so the
+    # message names just those packages and unrelated staged changes
+    # (e.g. a pointer staged by `push` without `--commit`) are left.
+    updated = [
+        name
+        for name in names
+        if name in versions and staged_sha(repo, paths[name]) != before[name]
+    ]
     if updated:
-        staged = repo.git.diff("--cached", "--name-only").strip()
-        if not staged:
-            click.echo("Outer pointer already up to date.")
-        else:
-            if len(updated) == 1:
-                (single, version) = next(iter(updated.items()))
-                msg = f"{single}: {version}"
+        diff_paths = [paths[name] for name in updated]
+        staged = set(
+            repo.git.diff("--cached", "--name-only", "--", *diff_paths).split()
+        )
+        committable = [name for name in updated if paths[name] in staged]
+        if committable:
+            if len(committable) == 1:
+                name = committable[0]
+                msg = f"{name}: {versions[name]}"
             else:
-                msg = ", ".join(f"{n}: {v}" for n, v in sorted(updated.items()))
-            repo.index.commit(msg)
+                msg = ", ".join(f"{n}: {versions[n]}" for n in committable)
+            commit_paths(repo, msg, [paths[name] for name in committable])
             click.echo(f"Committed outer pointer: {msg}")
+        else:
+            click.echo("Outer pointer already up to date.")
+    elif not failed and all(
+        message in ("already up to date", "no upstream yet")
+        for message in results.values()
+    ):
+        click.echo("Outer pointer already up to date.")
 
     if failed:
         raise click.ClickException(

@@ -100,3 +100,32 @@ def test_push_requires_package_or_all(submodule_factory, cli_runner) -> None:
 
     assert result.exit_code == 1
     assert "Specify a package or use --all" in result.output
+
+
+def test_push_commit_leaves_unrelated_staged_changes(
+    submodule_factory, cli_runner, monkeypatch
+) -> None:
+    """--commit only commits pushed pointers, nothing else."""
+    worktree, sources = submodule_factory("pkg-a")
+    _allow_push(sources["pkg-a"])
+    monkeypatch.setattr(push_mod, "srcinfo_status", lambda _d: ("ok", None))
+    pkg_dir = Path(str(worktree.working_tree_dir)) / "pkg-a"
+    (pkg_dir / ".SRCINFO").write_text(
+        "pkgbase = pkg-a\n\tpkgver = 2.0\n\tpkgrel = 3\n\npkgname = pkg-a\n",
+        encoding="utf-8",
+    )
+    sm_repo = worktree.submodules["pkg-a"].module()
+    sm_repo.git.add(".SRCINFO")
+    sm_repo.index.commit("add srcinfo")
+    notes = Path(str(worktree.working_tree_dir)) / "NOTES.txt"
+    notes.write_text("my notes\n", encoding="utf-8")
+    worktree.git.add("NOTES.txt")
+
+    result = cli_runner(
+        str(worktree.working_tree_dir), ["push", "pkg-a", "--commit"]
+    )
+
+    assert result.exit_code == 0
+    assert worktree.head.commit.message.strip() == "pkg-a: 2.0-3"
+    assert set(worktree.head.commit.stats.files) == {"pkg-a"}
+    assert worktree.git.diff("--cached", "--name-only").strip() == "NOTES.txt"
